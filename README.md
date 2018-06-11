@@ -18,7 +18,7 @@
 6. 高亮度LED灯条
 
 ### 软件基础
-C language
+C language  
 Assembly
 
 ### Contributor
