@@ -21,6 +21,6 @@ C language
 Assembly
 
 ### Contributor
-alittlemoyu
-unstoppableZack
+alittlemoyu  
+unstoppableZack  
 ccAlbert
