@@ -1,44 +1,54 @@
 #include <LiquidCrystal.h>
 #include <MsTimer2.h> 
-LiquidCrystal lcd(12,11,7,6,5,4);
+LiquidCrystal lcd(12,11,8,7,6,5);
 int tick = 0;
 int light = 0;
 int lowdistance = 0;
 int lowlight = 0;
 int night = 0;
 int waiting = 0;
-int backlight;
+int backlight = 5;
 int lcddisplay = 10;
 int i=0;
 const int TrigPin = 0;
 const int EchoPin = 1;
-const int LightPin = 2;
-const int BacklightPin = 3;
+const int pinInterrupt = 2; 
+const int LightPin = 3;
+const int BacklightPin = 4;
 float dist;
 float temp;
-float GetDist();
-int GetLex();
-void ControlLight();
+float distance;
+
+void onChange()  
+{  
+  digitalWrite(BacklightPin,HIGH);
+  backlight = 5;
+} 
 
 void onTimer()  
 { 
+  Serial.println(lowdistance);
+  Serial.println(lowlight);
   if ((light == 1)and(waiting == 0))
   {
     lcd.setCursor(0,0);
     lcd.print("Light is On.");
-    Serial.println("Light is On.");
+    Serial.print("Light is On.");
+    Serial.println();
   }
   else if (light == 1)
   {
     lcd.setCursor(0,0);
     lcd.print("Waiting for you.");
-    Serial.println("Waiting for you.");
+    Serial.print("Waiting for you.");
+    Serial.println();
   }
   else
   {
     lcd.setCursor(0,0);
-    lcd.print("Sun is alive.");
-    Serial.println("Sun is alive.");
+    lcd.print("Gone.");
+    Serial.print("Gone.");
+    Serial.println();
   }
   temp = analogRead(A1)*5*100/1024.00;
   Serial.println(temp);
@@ -54,9 +64,9 @@ void onTimer()
   {
     digitalWrite(BacklightPin,LOW);
   }
-  if ((lcddisplay > 0)&&(night == 1))
+  if ((lcddisplay>0)&&(night == 1))
   {
-    lcddisplay = lcddisplay-1;
+    lcddisplay = lcddisplay - 1;
   }
   else
   {
@@ -69,35 +79,97 @@ void onTimer()
   }
 } 
 
-void setup() {
+float GetDist()
+{
+  digitalWrite(TrigPin,LOW);
+  delayMicroseconds(2);
+  digitalWrite(TrigPin,HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TrigPin,LOW);
+  distance = pulseIn(EchoPin,HIGH)/58.00;
+  if (distance<120)
+  {
+    lowdistance = 1;
+  }
+  else
+  {
+    lowdistance = 0;
+  }
+  Serial.println(distance);
+  return distance;
+}
+
+int GetLex()
+{ 
+  if (analogRead(0)>280)
+  {
+    lowlight = 1;
+  }
+  else
+  {
+    lowlight = 0;
+  }
+  if (analogRead(0)>800)
+  {
+    night = 1;
+  }
+  else
+  {
+    night = 0;
+  }
+  Serial.println(analogRead(0));
+  return lowlight;
+}
+
+int ControlLight()
+{
+  if (light == 1)
+  {
+    digitalWrite(LightPin,HIGH);
+  }
+  else
+  {
+    digitalWrite(LightPin,LOW);
+  }
+  Serial.println("Fuck!");
+  return 0;
+}
+
+void setup() 
+{
   // put your setup code here, to run once:
   Serial.begin(9600);
-  Serial.println("Link Start!");
+  Serial.print("Link Start");
+  Serial.println();
   pinMode(TrigPin,OUTPUT);
   pinMode(EchoPin,INPUT);
   pinMode(BacklightPin,OUTPUT);
+  pinMode(pinInterrupt, INPUT);
+  digitalWrite(BacklightPin,HIGH);
   lcd.begin(16,2);
   lcd.print("Link Start!");
   lcd.setCursor(11,0); 
   lcd.blink(); 
   MsTimer2::set(1000, onTimer); 
   MsTimer2::start(); 
+  attachInterrupt( digitalPinToInterrupt(pinInterrupt), onChange, CHANGE); 
 }
 
-void loop() {
+void loop() 
+{
   // put your main code here, to run repeatedly:
-  GetDist();
-  GetLex();
+  distance = GetDist();
+  lowlight = GetLex();
   if (lowdistance && lowlight == 1)
   {
     light = 1;
   }
-  ControlLight();
+  i = ControlLight();
   for(i=10;i>0;i--)
   {
     delay(850);
-    GetDist();
-    GetLex();
+    distance = GetDist();
+    lowlight = GetLex();
   }
   if (lowdistance == 1)
   {
@@ -106,7 +178,7 @@ void loop() {
   else
   {
     waiting = 1;
-    for(i=60;i>0;i--)
+    for(i=180;i>0;i--)
     {
       delay(1000);
     }
@@ -117,62 +189,4 @@ void loop() {
     } 
     waiting = 0;
   }
-}
-
-float GetDist()
-{
-  float distance;
-  digitalWrite(TrigPin,LOW);
-  delayMicroseconds(2);
-  digitalWrite(TrigPin,HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TrigPin,LOW);
-  distance = pulseIn(EchoPin,HIGH)/58.00;
-  if (GetDist() < 120)
-  {
-    lowdistance = 1;
-  }
-  else
-  {
-    lowdistance = 0;
-  }
-  return distance;
-}
-
-int GetLex()
-{ 
-  int lex = 0;
-  if (analogRead(lex) > 280)
-  {
-    lowlight = 1;
-  }
-  else
-  {
-    lowlight = 0;
-  }
-  if (analogRead(lex) > 800)
-  {
-    night = 1;
-  }
-  else
-  {
-    night = 0;
-  }
-  return lowlight;
-}
-
-void ControlLight()
-{
-  if (light == 1)
-  {
-    digitalWrite(LightPin,HIGH);
-    Serial.println("Light");
-  }
-  else
-  {
-    digitalWrite(LightPin,LOW);
-    Serial.println("Dark");
-  }
-  digitalWrite(BacklightPin,HIGH);
-  backlight = 5;
 }
