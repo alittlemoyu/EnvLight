@@ -1,7 +1,8 @@
 #include <LiquidCrystal.h>
 #include <MsTimer2.h> 
-LiquidCrystal lcd(12,11,8,7,6,5);
+LiquidCrystal lcd(12,11,7,6,5,4);
 int tick = 0;
+int tock = 0;
 int light = 0;
 int lowdistance = 0;
 int lowlight = 0;
@@ -9,38 +10,132 @@ int night = 0;
 int waiting = 0;
 int backlight = 5;
 int lcddisplay = 10;
-int i=0;
-const int TrigPin = 0;
-const int EchoPin = 1;
+int i;
+const int TrigPin = 9;
+const int EchoPin = 10;
 const int pinInterrupt = 2; 
-const int LightPin = 3;
-const int BacklightPin = 4;
+const int BluePin = 13;
+const int BacklightPin = 8;
 float dist;
-float temp;
-float distance;
+int temp;
+int check;
+int check0;
+int ans = 0;
+int keep;
+int sjmp = 0;
+int tick_ans;
 
 void onChange()  
 {  
   digitalWrite(BacklightPin,HIGH);
   backlight = 5;
+  Serial.println("You want me DISPLAY?");
 } 
 
-void onTimer()  
+void onTimer()
 { 
-  Serial.println(lowdistance);
-  Serial.println(lowlight);
-  if ((light == 1)and(waiting == 0))
+  GetDist();
+  GetLex();
+  
+  if (((lowdistance and lowlight) == 1) or (tick > 0))
+  {
+    light = 1;
+    keep = 1;
+    Serial.println("Pass");
+  }
+  else
+  {
+    if (keep == 1)
+    {
+      light = 1;
+      keep = 0;
+      check0 = 1;
+    }
+    else light = 0;
+  }   
+  
+  if (lowdistance == 1)
+  {
+    waiting = 0;
+    tick = 0;
+    tock = 0;
+    sjmp = 0;
+  }
+  
+  if (waiting > 0)
+  {
+    Serial.print("Waiting changes from ");
+    Serial.print(waiting);
+    waiting = waiting - 1;
+    Serial.print(" to ");
+    Serial.println(waiting);
+    if (waiting == 0)
+    {
+      tock = 1;
+    }
+  }
+
+  if ((ans - light) == 1)
+  {
+    Serial.println("We are losing the light.");
+  }
+  ans = light;
+      
+  if (check0 == 1)
+  {
+    check = 1;
+    Serial.println("Doulble Check 1 !!!");
+    check0 = 0;
+  }
+  else if (tock == 1)
+  {
+    check = 1;
+    Serial.println("Doulble Check 2 !!!");
+  }
+  else check = 0;
+  
+  ControlLight();
+  
+  Serial.print("Lowdistance is ");
+  Serial.print(lowdistance);
+  Serial.print(".And lowlight is ");
+  Serial.print(lowlight);
+  Serial.print(".Tick is ");
+  Serial.print(tick);
+  Serial.print(".Tock is ");
+  Serial.print(tock);
+  Serial.print(".Now waiting is ");
+  Serial.println(waiting);
+  
+  if ((light == 1) and (tick == 0))
+  {  
+    if ((tick_ans - tick) > 0)
+    {
+      lcd.setCursor(0,0);
+      lcd.print("Welcome back!");
+      Serial.print("Welcome back!");
+      Serial.println();
+    }
+    else
+    {
+      lcd.setCursor(0,0);
+      lcd.print("Light is On.");
+      Serial.print("Light is On.");
+      Serial.println();
+    }
+  }
+  else if ((light == 1) and (tick == 1))
   {
     lcd.setCursor(0,0);
-    lcd.print("Light is On.");
-    Serial.print("Light is On.");
+    lcd.print("Where're you?");
+    Serial.print("Where're you?");
     Serial.println();
   }
-  else if (light == 1)
+  else if ((light == 1) and (tick == 2))
   {
     lcd.setCursor(0,0);
-    lcd.print("Waiting for you.");
-    Serial.print("Waiting for you.");
+    lcd.print("Waiting...");
+    Serial.print("Waiting...");
     Serial.println();
   }
   else
@@ -49,12 +144,18 @@ void onTimer()
     lcd.print("Gone.");
     Serial.print("Gone.");
     Serial.println();
-  }
-  temp = analogRead(A1)*5*100/1024.00;
-  Serial.println(temp);
+  }  
+
+  tick_ans = tick;
+  
+  temp = round(analogRead(A1)*5*100/1024.00);
+  Serial.print("Temp is ");
+  Serial.print(temp);
+  Serial.println("℃");
+  Serial.println();
   lcd.setCursor(0,1);
   lcd.print(temp);
-  lcd.setCursor(5,1);
+  lcd.setCursor(2,1);
   lcd.print("℃");
   if (backlight > 0)
   {
@@ -64,7 +165,7 @@ void onTimer()
   {
     digitalWrite(BacklightPin,LOW);
   }
-  if ((lcddisplay>0)&&(night == 1))
+  if ((lcddisplay>0) and (night == 1))
   {
     lcddisplay = lcddisplay - 1;
   }
@@ -72,7 +173,7 @@ void onTimer()
   {
     lcd.noDisplay();
   }
-  if ((lcddisplay == 0)&&(night == 0))
+  if ((lcddisplay == 0) and (night == 0))
   {
     lcddisplay = 10;
     lcd.display();
@@ -86,8 +187,8 @@ float GetDist()
   digitalWrite(TrigPin,HIGH);
   delayMicroseconds(10);
   digitalWrite(TrigPin,LOW);
-  distance = pulseIn(EchoPin,HIGH)/58.00;
-  if (distance<120)
+  dist = pulseIn(EchoPin,HIGH)/58.00;
+  if (dist<80)
   {
     lowdistance = 1;
   }
@@ -95,13 +196,14 @@ float GetDist()
   {
     lowdistance = 0;
   }
-  Serial.println(distance);
-  return distance;
+  Serial.print("The distance is ");
+  Serial.println(dist);
+  return dist;
 }
 
 int GetLex()
 { 
-  if (analogRead(0)>280)
+  if (analogRead(0)>240)
   {
     lowlight = 1;
   }
@@ -117,6 +219,7 @@ int GetLex()
   {
     night = 0;
   }
+  Serial.print("Light is ");
   Serial.println(analogRead(0));
   return lowlight;
 }
@@ -125,22 +228,23 @@ int ControlLight()
 {
   if (light == 1)
   {
-    digitalWrite(LightPin,HIGH);
+    digitalWrite(BluePin,HIGH);
   }
   else
   {
-    digitalWrite(LightPin,LOW);
+    digitalWrite(BluePin,LOW);
   }
-  Serial.println("Fuck!");
+  Serial.println("Checking Light Status···");
   return 0;
 }
 
 void setup() 
 {
-  // put your setup code here, to run once:
   Serial.begin(9600);
   Serial.print("Link Start");
   Serial.println();
+  delay(500);
+
   pinMode(TrigPin,OUTPUT);
   pinMode(EchoPin,INPUT);
   pinMode(BacklightPin,OUTPUT);
@@ -152,41 +256,50 @@ void setup()
   lcd.blink(); 
   MsTimer2::set(1000, onTimer); 
   MsTimer2::start(); 
-  attachInterrupt( digitalPinToInterrupt(pinInterrupt), onChange, CHANGE); 
+  attachInterrupt(0,onChange,RISING); 
+  GetDist();
+  GetLex();
+    
+  Serial.print("Now let's rolling!");
+  Serial.println();
+  Serial.println();
 }
 
 void loop() 
 {
-  // put your main code here, to run repeatedly:
-  distance = GetDist();
-  lowlight = GetLex();
-  if (lowdistance && lowlight == 1)
+  if ((check == 1) and (sjmp == 0))
   {
-    light = 1;
-  }
-  i = ControlLight();
-  for(i=10;i>0;i--)
-  {
-    delay(850);
-    distance = GetDist();
-    lowlight = GetLex();
-  }
-  if (lowdistance == 1)
-  {
-    light = 1;
-  }
-  else
-  {
-    waiting = 1;
-    for(i=180;i>0;i--)
+    if ((tick == 0) and (tock == 0))
     {
-      delay(1000);
+      Serial.println("Here is the magic!");
+      waiting = 15;
+      tick = 1;
     }
-    if (lowdistance == 0)
+    if (tick == 1)
     {
-      light = 0;
-      ControlLight();
-    } 
-    waiting = 0;
+      if(tock == 1)
+      {
+        if (lowdistance == 0)
+        {
+          tick = 2;
+          tock = 0;
+          Serial.println("Soon leave.");
+          waiting = 60;
+        }
+      }
+    }
+    if (tick == 2)  
+    {
+      if(tock == 1)
+      {
+        if (lowdistance == 0)
+        {
+          tick = 0;
+          tock = 0;
+          Serial.println("All gone.");
+          sjmp = 1;
+        }
+      }
+    }
   }
 }
