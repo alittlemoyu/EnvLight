@@ -11,10 +11,10 @@ int waiting = 0;
 int backlight = 5;
 int lcddisplay = 10;
 int i;
-const int TrigPin = 9;
+const int TrigPin = 13;
 const int EchoPin = 10;
 const int pinInterrupt = 2; 
-const int BluePin = 13;
+const int BluePin = 9;
 const int BacklightPin = 8;
 float dist;
 int temp;
@@ -29,7 +29,10 @@ void onChange()
 {  
   digitalWrite(BacklightPin,HIGH);
   backlight = 5;
+  lcddisplay = 10;
   Serial.println("You want me DISPLAY?");
+  lcd.setCursor(0,0);
+  lcd.print("LCD YES!    ");
 } 
 
 void onTimer()
@@ -61,6 +64,14 @@ void onTimer()
     tock = 0;
     sjmp = 0;
   }
+
+  if (lowlight == 0)
+  {
+    waiting = 0;
+    tick = 0;
+    tock = 0;
+    check0 = 0;
+  }  
   
   if (waiting > 0)
   {
@@ -106,7 +117,7 @@ void onTimer()
   Serial.print(tock);
   Serial.print(".Now waiting is ");
   Serial.println(waiting);
-  
+      
   if ((light == 1) and (tick == 0))
   {  
     if ((tick_ans - tick) > 0)
@@ -127,21 +138,21 @@ void onTimer()
   else if ((light == 1) and (tick == 1))
   {
     lcd.setCursor(0,0);
-    lcd.print("Where're you?");
+    lcd.print("Where're you?   ");
     Serial.print("Where're you?");
     Serial.println();
   }
   else if ((light == 1) and (tick == 2))
   {
     lcd.setCursor(0,0);
-    lcd.print("Waiting...");
+    lcd.print("Waiting...     ");
     Serial.print("Waiting...");
     Serial.println();
   }
   else
   {
     lcd.setCursor(0,0);
-    lcd.print("Gone.");
+    lcd.print("Gone.        ");
     Serial.print("Gone.");
     Serial.println();
   }  
@@ -151,12 +162,12 @@ void onTimer()
   temp = round(analogRead(A1)*5*100/1024.00);
   Serial.print("Temp is ");
   Serial.print(temp);
-  Serial.println("℃");
+  Serial.println(" Celsius");
   Serial.println();
   lcd.setCursor(0,1);
   lcd.print(temp);
   lcd.setCursor(2,1);
-  lcd.print("℃");
+  lcd.print(" Celsius!");
   if (backlight > 0)
   {
     backlight = backlight-1;
@@ -165,18 +176,25 @@ void onTimer()
   {
     digitalWrite(BacklightPin,LOW);
   }
-  if ((lcddisplay>0) and (night == 1))
+  Serial.print("lcddisplay is ");
+  Serial.print(lcddisplay);
+  Serial.print(" and night is ");
+  Serial.print(night);  
+  if ((lcddisplay > 0) and (night == 1))
   {
     lcddisplay = lcddisplay - 1;
+    Serial.println(" LCD -1");
+  }
+  else if (night == 0)
+  {
+    lcddisplay = 10;
+    lcd.display();
+    Serial.println(" LCD on");
   }
   else
   {
     lcd.noDisplay();
-  }
-  if ((lcddisplay == 0) and (night == 0))
-  {
-    lcddisplay = 10;
-    lcd.display();
+    Serial.println(" LCD off");
   }
 } 
 
@@ -214,6 +232,7 @@ int GetLex()
   if (analogRead(0)>800)
   {
     night = 1;
+    Serial.println("It's night");
   }
   else
   {
@@ -228,15 +247,16 @@ int ControlLight()
 {
   if (light == 1)
   {
-    digitalWrite(BluePin,HIGH);
+    digitalWrite(BluePin,LOW);
   }
   else
   {
-    digitalWrite(BluePin,LOW);
+    digitalWrite(BluePin,HIGH);
   }
   Serial.println("Checking Light Status···");
   return 0;
 }
+
 
 void setup() 
 {
@@ -244,7 +264,7 @@ void setup()
   Serial.print("Link Start");
   Serial.println();
   delay(500);
-
+  pinMode(BluePin,OUTPUT);
   pinMode(TrigPin,OUTPUT);
   pinMode(EchoPin,INPUT);
   pinMode(BacklightPin,OUTPUT);
@@ -252,8 +272,8 @@ void setup()
   digitalWrite(BacklightPin,HIGH);
   lcd.begin(16,2);
   lcd.print("Link Start!");
-  lcd.setCursor(11,0); 
-  lcd.blink(); 
+  lcd.setCursor(16,1); 
+  lcd.blink();    
   MsTimer2::set(1000, onTimer); 
   MsTimer2::start(); 
   attachInterrupt(0,onChange,RISING); 
